@@ -270,6 +270,8 @@ echo "Saving image to $IMAGE_TAR ..."
 podman save -o "$IMAGE_TAR" openclaw:local
 
 echo "Loading image into $OPENCLAW_USER Podman store..."
+chmod 755 "$IMAGE_TAR_DIR"
+chmod 644 "$IMAGE_TAR"
 run_as_openclaw podman load -i "$IMAGE_TAR"
 
 echo "Installing launch script to $LAUNCH_SCRIPT_DST ..."
