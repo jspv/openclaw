@@ -559,8 +559,10 @@ podman run --pull="$PODMAN_PULL" -d --replace \
   -e NPM_CONFIG_CACHE=/home/node/.openclaw/.npm \
   -e OPENCLAW_NO_RESPAWN=1 \
   --env-file "$TOKEN_ENV_FILE" \
+  --network openclaw-net \
   -v "$CONFIG_DIR:/home/node/.openclaw:rw${SELINUX_MOUNT_OPTS}" \
   -v "$WORKSPACE_DIR:/home/node/.openclaw/workspace:rw${SELINUX_MOUNT_OPTS}" \
+  -v "$CONFIG_DIR/sandbox-ssh:/home/node/.openclaw/sandbox-ssh:rw${SELINUX_MOUNT_OPTS}" \
   -p "${PUBLISH_HOST}:${HOST_GATEWAY_PORT}:18789" \
   -p "${PUBLISH_HOST}:${HOST_BRIDGE_PORT}:18790" \
   "$OPENCLAW_IMAGE" \
