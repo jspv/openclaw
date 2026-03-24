@@ -207,11 +207,10 @@ if [[ "$RUN_SETUP" == true ]]; then
   exec podman run --pull="$PODMAN_PULL" --rm -it \
     --init \
     "${USERNS_ARGS[@]}" "${RUN_USER_ARGS[@]}" \
-    -e HOME=/home/openclaw -e OPENCLAW_STATE_DIR=/home/openclaw/.openclaw \
-    -e TERM=xterm-256color -e BROWSER=echo \
+    -e HOME=/home/node -e TERM=xterm-256color -e BROWSER=echo \
     -e OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_GATEWAY_TOKEN" \
-    -v "$CONFIG_DIR:/home/openclaw/.openclaw:rw${SELINUX_MOUNT_OPTS}" \
-    -v "$WORKSPACE_DIR:/home/openclaw/.openclaw/workspace:rw${SELINUX_MOUNT_OPTS}" \
+    -v "$CONFIG_DIR:/home/node/.openclaw:rw${SELINUX_MOUNT_OPTS}" \
+    -v "$WORKSPACE_DIR:/home/node/.openclaw/workspace:rw${SELINUX_MOUNT_OPTS}" \
     "${ENV_FILE_ARGS[@]}" \
     "$OPENCLAW_IMAGE" \
     node dist/index.js onboard "$@"
@@ -219,14 +218,14 @@ fi
 
 podman run --pull="$PODMAN_PULL" -d --replace \
   --name "$CONTAINER_NAME" \
-  --init \
+  --init --network openclaw-net \
   "${USERNS_ARGS[@]}" "${RUN_USER_ARGS[@]}" \
-  -e HOME=/home/openclaw -e OPENCLAW_STATE_DIR=/home/openclaw/.openclaw -e TERM=xterm-256color \
+  -e HOME=/home/node -e TERM=xterm-256color \
   -e OPENCLAW_GATEWAY_TOKEN="$OPENCLAW_GATEWAY_TOKEN" \
   "${ENV_FILE_ARGS[@]}" \
-  -v "$CONFIG_DIR:/home/openclaw/.openclaw:rw${SELINUX_MOUNT_OPTS}" \
-  -v "$WORKSPACE_DIR:/home/openclaw/.openclaw/workspace:rw${SELINUX_MOUNT_OPTS}" \
-  -v "/run/user/$(id -u)/podman/podman.sock:/var/run/docker.sock:rw" \
+  -v "$CONFIG_DIR:/home/node/.openclaw:rw${SELINUX_MOUNT_OPTS}" \
+  -v "$WORKSPACE_DIR:/home/node/.openclaw/workspace:rw${SELINUX_MOUNT_OPTS}" \
+  -v "$CONFIG_DIR/sandbox-ssh:/home/node/.openclaw/sandbox-ssh:rw${SELINUX_MOUNT_OPTS}" \
   -p "${HOST_GATEWAY_PORT}:18789" \
   -p "${HOST_BRIDGE_PORT}:18790" \
   "$OPENCLAW_IMAGE" \
