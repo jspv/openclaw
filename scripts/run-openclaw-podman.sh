@@ -553,7 +553,7 @@ fi
 TOKEN_ENV_FILE="$(create_token_env_file "$ENV_FILE" "$OPENCLAW_GATEWAY_TOKEN")"
 podman run --pull="$PODMAN_PULL" -d --replace \
   --name "$CONTAINER_NAME" \
-  --init \
+  --init --network openclaw-net \
   "${USERNS_ARGS[@]}" "${RUN_USER_ARGS[@]}" \
   -e HOME=/home/node -e TERM=xterm-256color \
   -e NPM_CONFIG_CACHE=/home/node/.openclaw/.npm \
