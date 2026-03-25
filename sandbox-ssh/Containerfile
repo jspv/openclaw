@@ -1,0 +1,40 @@
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-server \
+    bash \
+    ca-certificates \
+    curl \
+    git \
+    jq \
+    python3 \
+    ripgrep \
+    tar \
+    coreutils \
+    findutils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create sandbox user
+RUN useradd -m -s /bin/bash sandbox
+
+# Configure sshd
+RUN mkdir -p /run/sshd && \
+    ssh-keygen -A && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+    echo "AllowUsers sandbox" >> /etc/ssh/sshd_config
+
+# Set up authorized_keys
+ARG SSH_PUBLIC_KEY=""
+RUN mkdir -p /home/sandbox/.ssh && \
+    echo "${SSH_PUBLIC_KEY}" > /home/sandbox/.ssh/authorized_keys && \
+    chmod 700 /home/sandbox/.ssh && \
+    chmod 600 /home/sandbox/.ssh/authorized_keys && \
+    chown -R sandbox:sandbox /home/sandbox/.ssh
+
+# Create workspace directory
+RUN mkdir -p /home/sandbox/workspaces && \
+    chown sandbox:sandbox /home/sandbox/workspaces
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]
