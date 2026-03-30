@@ -12,7 +12,49 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tar \
     coreutils \
     findutils \
+    # Build & compile
+    build-essential \
+    # Editors & terminal
+    vim-tiny \
+    less \
+    tree \
+    # Archives
+    unzip \
+    zip \
+    gzip \
+    bzip2 \
+    xz-utils \
+    # Networking
+    wget \
+    openssh-client \
+    netcat-openbsd \
+    iproute2 \
+    dnsutils \
+    # Process & debug
+    procps \
+    htop \
+    file \
+    patch \
+    diffutils \
+    gawk \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
+
+# Node.js 22
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list && \
+    apt-get update && apt-get install -y gh && \
+    rm -rf /var/lib/apt/lists/*
+
+# uv (Python package/venv manager)
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # Create sandbox user
 RUN useradd -m -s /bin/bash sandbox
