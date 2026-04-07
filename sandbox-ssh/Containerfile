@@ -53,6 +53,11 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     apt-get update && apt-get install -y gh && \
     rm -rf /var/lib/apt/lists/*
 
+# Playwright + Chromium (installs browser and all required Linux system libs)
+RUN npm install -g playwright && \
+    playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/*
+
 # uv (Python package/venv manager)
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 

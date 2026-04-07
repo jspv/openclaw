@@ -410,7 +410,45 @@ sudo /usr/sbin/nft delete table inet openclaw-sandbox
 cd / && sudo -u openclaw /home/openclaw/run-openclaw-podman.sh
 ```
 
-## Step 16: Verify
+## Step 16: Enable auto-start on boot
+
+`podman-restart.service` (the Podman-provided user service) does **not** work for
+this setup for two reasons:
+
+1. It filters for `restart-policy=always` only — the sandbox container uses
+   `unless-stopped` and the gateway container (launched via `run-openclaw-podman.sh`)
+   has no restart policy set at all.
+2. Even if the policies matched, the service would start them in arbitrary order.
+
+Instead, create a dedicated user systemd service that starts both containers in
+the correct order (sandbox first, then gateway):
+
+```bash
+sudo tee /home/openclaw/.config/systemd/user/openclaw-containers.service > /dev/null << 'EOF'
+[Unit]
+Description=OpenClaw gateway and sandbox containers
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/podman start openclaw-sandbox openclaw
+ExecStop=/usr/bin/podman stop openclaw openclaw-sandbox
+
+[Install]
+WantedBy=default.target
+EOF
+sudo chown 1001:1001 /home/openclaw/.config/systemd/user/openclaw-containers.service
+```
+
+Enable it (linger is already set, so the user session starts at boot):
+
+```bash
+sudo -u openclaw XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) systemctl --user daemon-reload
+sudo -u openclaw XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) systemctl --user enable --now openclaw-containers.service
+```
+
+## Step 17: Verify
 
 ```bash
 # Both containers running
@@ -443,7 +481,7 @@ cd /tmp && sudo -u openclaw podman exec openclaw \
   sandbox@openclaw-sandbox 'curl -s --connect-timeout 3 http://192.168.171.154/ 2>&1 || echo "LAN blocked (expected)"'
 ```
 
-## Step 17: Approve channel pairing
+## Step 18: Approve channel pairing
 
 ### Telegram (or other messaging channel)
 
