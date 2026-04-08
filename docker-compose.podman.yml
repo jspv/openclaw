@@ -1,0 +1,9 @@
+# Podman overlay for docker-compose.yml.
+# Usage: podman compose -f docker-compose.yml -f docker-compose.podman.yml up -d
+#
+# Adds rootless Podman settings (userns keep-id) to the base gateway service.
+# For sandbox support, also layer docker-compose.podman-sandbox.yml (generated
+# by scripts/podman/setup.sh when OPENCLAW_SANDBOX=1).
+services:
+  openclaw-gateway:
+    userns_mode: keep-id

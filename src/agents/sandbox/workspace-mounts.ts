@@ -17,13 +17,15 @@ export function appendWorkspaceMountArgs(params: {
   agentWorkspaceDir: string;
   workdir: string;
   workspaceAccess: SandboxWorkspaceAccess;
+  translateHostPath?: ((path: string) => string) | null;
 }) {
   const { args, workspaceDir, agentWorkspaceDir, workdir, workspaceAccess } = params;
+  const translate = params.translateHostPath ?? ((p: string) => p);
 
   args.push(
     "-v",
     formatManagedWorkspaceBind({
-      hostPath: workspaceDir,
+      hostPath: translate(workspaceDir),
       containerPath: workdir,
       readOnly: workspaceAccess !== "rw",
     }),
@@ -32,7 +34,7 @@ export function appendWorkspaceMountArgs(params: {
     args.push(
       "-v",
       formatManagedWorkspaceBind({
-        hostPath: agentWorkspaceDir,
+        hostPath: translate(agentWorkspaceDir),
         containerPath: SANDBOX_AGENT_WORKSPACE_MOUNT,
         readOnly: workspaceAccess === "ro",
       }),

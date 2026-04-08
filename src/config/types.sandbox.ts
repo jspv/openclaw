@@ -45,6 +45,22 @@ export type SandboxDockerSettings = {
   /** Additional bind mounts (host:container:mode format, e.g. ["/host/path:/container/path:rw"]). */
   binds?: string[];
   /**
+   * Host-side path prefix for bind-mount sources when the gateway runs inside a
+   * container whose internal paths differ from host paths (e.g. Podman socket
+   * passthrough). When set, the gateway rewrites bind-mount source paths from its
+   * internal prefix to this host prefix before passing them to `docker create -v`.
+   * Example: "/home/openclaw/.openclaw"
+   */
+  hostPathPrefix?: string;
+  /**
+   * Gateway-internal path prefix that corresponds to hostPathPrefix. When omitted,
+   * defaults to the gateway's resolved state directory (~/.openclaw).
+   * Example: "/home/node/.openclaw"
+   */
+  gatewayPathPrefix?: string;
+  /** Extra arguments to pass to `docker create` (e.g. ["--userns=keep-id"]). */
+  createArgs?: string[];
+  /**
    * Dangerous override: allow bind mounts that target reserved container paths
    * like /workspace or /agent.
    */

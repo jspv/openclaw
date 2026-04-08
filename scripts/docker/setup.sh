@@ -316,6 +316,12 @@ fi
 export OPENCLAW_GATEWAY_TOKEN
 
 COMPOSE_FILES=("$COMPOSE_FILE")
+# Auto-detect Podman: include the Podman compose overlay if it exists and the
+# runtime is Podman (podman-docker makes "docker" an alias for podman).
+PODMAN_COMPOSE_FILE="$ROOT_DIR/docker-compose.podman.yml"
+if [[ -f "$PODMAN_COMPOSE_FILE" ]] && docker --version 2>/dev/null | grep -qi podman; then
+  COMPOSE_FILES+=("$PODMAN_COMPOSE_FILE")
+fi
 COMPOSE_ARGS=()
 
 write_extra_compose() {
@@ -563,10 +569,18 @@ if [[ -n "$SANDBOX_ENABLED" ]]; then
 fi
 
 # Apply sandbox config only if prerequisites are met.
+# Apply sandbox config only if prerequisites are met.
+IS_PODMAN=""
+if docker --version 2>/dev/null | grep -qi podman; then
+  IS_PODMAN=1
+fi
+
 if [[ -n "$SANDBOX_ENABLED" ]]; then
-  # Mount Docker socket via a dedicated compose overlay. This overlay is
-  # created only after sandbox prerequisites pass, so the socket is never
+  # Mount container runtime socket via a dedicated compose overlay. This overlay
+  # is created only after sandbox prerequisites pass, so the socket is never
   # exposed when sandbox cannot actually run.
+  # Both Docker and Podman sockets are mounted at /var/run/docker.sock inside
+  # the gateway container so the Docker CLI finds the socket automatically.
   if [[ -S "$DOCKER_SOCKET_PATH" ]]; then
     SANDBOX_COMPOSE_FILE="$ROOT_DIR/docker-compose.sandbox.yml"
     cat >"$SANDBOX_COMPOSE_FILE" <<YAML
@@ -582,10 +596,10 @@ YAML
 YAML
     fi
     COMPOSE_ARGS+=("-f" "$SANDBOX_COMPOSE_FILE")
-    echo "==> Sandbox: added Docker socket mount"
+    echo "==> Sandbox: added socket mount ($DOCKER_SOCKET_PATH -> /var/run/docker.sock)"
   else
-    echo "WARNING: OPENCLAW_SANDBOX enabled but Docker socket not found at $DOCKER_SOCKET_PATH." >&2
-    echo "  Sandbox requires Docker socket access. Skipping sandbox setup." >&2
+    echo "WARNING: OPENCLAW_SANDBOX enabled but socket not found at $DOCKER_SOCKET_PATH." >&2
+    echo "  Sandbox requires socket access. Skipping sandbox setup." >&2
     SANDBOX_ENABLED=""
   fi
 fi
@@ -607,6 +621,28 @@ if [[ -n "$SANDBOX_ENABLED" ]]; then
     config set agents.defaults.sandbox.workspaceAccess "none" >/dev/null; then
     echo "WARNING: Failed to set agents.defaults.sandbox.workspaceAccess" >&2
     sandbox_config_ok=false
+  fi
+
+  # Podman path translation: the gateway container sees ~/.openclaw at
+  # /home/node/.openclaw, but bind-mount source paths passed to
+  # podman create -v must resolve on the host.
+  if [[ -n "$IS_PODMAN" ]]; then
+    if ! run_runtime_cli current no-deps \
+      config set agents.defaults.sandbox.docker.hostPathPrefix "$OPENCLAW_CONFIG_DIR" >/dev/null; then
+      echo "WARNING: Failed to set sandbox.docker.hostPathPrefix" >&2
+      sandbox_config_ok=false
+    fi
+    if ! run_runtime_cli current no-deps \
+      config set agents.defaults.sandbox.docker.gatewayPathPrefix "/home/node/.openclaw" >/dev/null; then
+      echo "WARNING: Failed to set sandbox.docker.gatewayPathPrefix" >&2
+      sandbox_config_ok=false
+    fi
+    # createArgs as JSON array
+    if ! run_runtime_cli current no-deps \
+      config set --json agents.defaults.sandbox.docker.createArgs '["--userns=keep-id"]' >/dev/null; then
+      echo "WARNING: Failed to set sandbox.docker.createArgs" >&2
+      sandbox_config_ok=false
+    fi
   fi
 
   if [[ "$sandbox_config_ok" == true ]]; then

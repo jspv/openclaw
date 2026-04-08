@@ -167,6 +167,7 @@ import { markOpenClawExecEnv } from "../../infra/openclaw-exec-env.js";
 import { defaultRuntime } from "../../runtime.js";
 import { computeSandboxConfigHash } from "./config-hash.js";
 import { DEFAULT_SANDBOX_IMAGE } from "./constants.js";
+import { createHostPathTranslator } from "./host-path-translate.js";
 import { readRegistry, updateRegistry } from "./registry.js";
 import { resolveSandboxAgentId, resolveSandboxScopeKey, slugifySessionKey } from "./shared.js";
 import type { SandboxConfig, SandboxDockerConfig, SandboxWorkspaceAccess } from "./types.js";
@@ -424,14 +425,31 @@ export function buildSandboxCreateArgs(params: {
       args.push("-v", bind);
     }
   }
+  for (const arg of params.cfg.createArgs ?? []) {
+    args.push(arg);
+  }
   return args;
 }
 
-function appendCustomBinds(args: string[], cfg: SandboxDockerConfig): void {
+function appendCustomBinds(
+  args: string[],
+  cfg: SandboxDockerConfig,
+  translateHostPath?: ((path: string) => string) | null,
+): void {
   if (!cfg.binds?.length) {
     return;
   }
+  const translate = translateHostPath ?? null;
   for (const bind of cfg.binds) {
+    if (translate) {
+      const firstColon = bind.indexOf(":");
+      if (firstColon > 0) {
+        const source = bind.slice(0, firstColon);
+        const rest = bind.slice(firstColon);
+        args.push("-v", `${translate(source)}${rest}`);
+        continue;
+      }
+    }
     args.push("-v", bind);
   }
 }
@@ -448,6 +466,8 @@ async function createSandboxContainer(params: {
   const { name, cfg, workspaceDir, scopeKey } = params;
   await ensureDockerImage(cfg.image);
 
+  const translateHostPath = createHostPathTranslator(cfg);
+
   const args = buildSandboxCreateArgs({
     name,
     cfg,
@@ -463,8 +483,9 @@ async function createSandboxContainer(params: {
     agentWorkspaceDir: params.agentWorkspaceDir,
     workdir: cfg.workdir,
     workspaceAccess: params.workspaceAccess,
+    translateHostPath,
   });
-  appendCustomBinds(args, cfg);
+  appendCustomBinds(args, cfg, translateHostPath);
   args.push(cfg.image, "sleep", "infinity");
 
   await execDocker(args);
